@@ -2478,7 +2478,7 @@ MonoBehaviour:
   scorePerFood: 20
   invincibilityTime: 1.5
   knockbackForce: 8
-  cutsceneName: Story1
+  cutsceneName: 进化动画
   nextSceneName: Story1
   evolveAnimName: Cell_Evolve
   evolveAnimLength: 1.5

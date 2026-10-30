@@ -14,10 +14,10 @@ public class PlayerStats : MonoBehaviour
     public float knockbackForce = 8f;
 
     [Header("进化后先去的过场场景，留空则直接进下一关")]
-    public string cutsceneName = "Story1";
+    public string cutsceneName = "进化动画";
 
     [Header("最终下一关场景名")]
-    public string nextSceneName = "Level2";
+    public string nextSceneName = "Story1";
 
     [Header("进化动画名 / 时长")]
     public string evolveAnimName = "Cell_Evolve";
