@@ -2,69 +2,59 @@ using UnityEngine;
 
 public class CameraFollow : MonoBehaviour
 {
-    [Header("跟随目标：把Player物体拖进来")]
+    [Header("跟随目标：把 Player 拖进来")]
     public Transform target;
 
     [Header("背景 SpriteRenderer：把背景图拖进来，自动按背景算边界")]
     public SpriteRenderer background;
 
-    [Header("自动按背景限制相机边界（推荐打开）")]
-    public bool autoBounds = true;
+    [Header("跟随平滑度（越大越紧跟，建议 10+）")]
+    public float smoothSpeed = 15f;
 
-    [Header("手动边界（autoBounds 关闭时生效，或作为兜底值）")]
-    public float minX = -4.46f;
-    public float maxX = 4.46f;
-    public float minY = -0.02f;
-    public float maxY = 0.02f;
-
-    [Header("跟随平滑度")]
-    public float smoothSpeed = 6f;
-
-    private Vector3 _offset;
     private Camera _cam;
 
     void Start()
     {
         _cam = GetComponent<Camera>();
-        if (target != null)
+        if (background != null)
         {
-            // 记录相机和玩家的初始距离
-            _offset = transform.position - target.position;
+            Bounds b = background.bounds;
+            float halfH = _cam.orthographicSize;
+            float halfW = halfH * _cam.aspect;
+            Debug.Log($"[CameraFollow] background bounds: min=({b.min.x:F2},{b.min.y:F2}) max=({b.max.x:F2},{b.max.y:F2}) size=({b.size.x:F2},{b.size.y:F2})");
+            Debug.Log($"[CameraFollow] halfW={halfW:F2} halfH={halfH:F2}  clampX=[{b.min.x+halfW:F2}, {b.max.x-halfW:F2}]");
         }
     }
 
     void LateUpdate()
     {
-        if (target == null) return;
+        if (target == null || background == null || _cam == null) return;
 
-        float targetX = target.position.x + _offset.x;
-        float targetY = target.position.y + _offset.y;
+        Bounds b = background.bounds;
+        float halfH = _cam.orthographicSize;
+        float halfW = halfH * _cam.aspect;
 
-        if (autoBounds && background != null && _cam != null)
-        {
-            // 相机视口半宽/半高，随屏幕比例变化
-            float halfH = _cam.orthographicSize;
-            float halfW = halfH * _cam.aspect;
+        // 相机跟随玩家位置
+        float targetX = target.position.x;
+        float targetY = target.position.y;
 
-            Bounds b = background.bounds;
-            float minXc = b.min.x + halfW;
-            float maxXc = b.max.x - halfW;
-            float minYc = b.min.y + halfH;
-            float maxYc = b.max.y - halfH;
-
-            // 背景比相机视口还窄/矮的那一侧，直接锁中心
-            targetX = minXc < maxXc ? Mathf.Clamp(targetX, minXc, maxXc) : b.center.x;
-            targetY = minYc < maxYc ? Mathf.Clamp(targetY, minYc, maxYc) : b.center.y;
-        }
+        // X 方向：相机中心不能让背景左右边缘露出
+        float minXc = b.min.x + halfW;
+        float maxXc = b.max.x - halfW;
+        if (minXc < maxXc)
+            targetX = Mathf.Clamp(targetX, minXc, maxXc);
         else
-        {
-            targetX = Mathf.Clamp(targetX, minX, maxX);
-            targetY = Mathf.Clamp(targetY, minY, maxY);
-        }
+            targetX = b.center.x;
 
-        Vector3 desiredPos = new Vector3(targetX, targetY, _offset.z);
+        // Y 方向：相机中心不能让背景上下边缘露出
+        float minYc = b.min.y + halfH;
+        float maxYc = b.max.y - halfH;
+        if (minYc < maxYc)
+            targetY = Mathf.Clamp(targetY, minYc, maxYc);
+        else
+            targetY = b.center.y;
 
-        // 平滑移动
-        transform.position = Vector3.Lerp(transform.position, desiredPos, smoothSpeed * Time.deltaTime);
+        Vector3 desiredPos = new Vector3(targetX, targetY, transform.position.z);
+        transform.position = desiredPos;
     }
 }
