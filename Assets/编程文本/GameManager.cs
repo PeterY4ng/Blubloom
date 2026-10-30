@@ -59,6 +59,20 @@ public class GameManager : MonoBehaviour
         StageIndex++;
     }
 
+    // 真主菜单与局内菜单共用：由第一关自己的配置创建全新一局。
+    public static void StartNewRun(string firstSceneName)
+    {
+        if (Instance != null)
+        {
+            GameObject previousRun = Instance.gameObject;
+            Instance = null;
+            Destroy(previousRun);
+        }
+
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(firstSceneName);
+    }
+
     // 死亡重开：清掉所有进度
     public void RestartRun()
     {
