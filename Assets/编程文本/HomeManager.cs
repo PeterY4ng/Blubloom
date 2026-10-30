@@ -9,30 +9,86 @@ public class HomeManager : MonoBehaviour
     [Header("点Start后进入的场景名，必须和文件名一致")]
     public string startSceneName = "Level1";
 
+    [SerializeField] private Transform menuRoot;
+
     private bool _clicked;
+    private bool _initialized;
+    private PauseManager _runMenuOwner;
+    private VideoPlayer _videoPlayer;
+    private RenderTexture _videoTexture;
+
+    private bool IsRunMenu => menuRoot != null;
 
     void Start()
     {
+        InitializeMenu();
+    }
+
+    private void InitializeMenu()
+    {
+        if (_initialized) return;
+        _initialized = true;
+
         AudioManager.Ensure();
         SetupVideo();
         SetupStartButton();
         SetupHomeSettingsUI();
+        if (IsRunMenu)
+        {
+            SetupRunResumeButton();
+            FindInactive("SettingsButton")?.SetActive(false);
+            _homeVolumePanel?.SetActive(false);
+        }
+    }
+
+    public void ShowRunMenu(PauseManager owner)
+    {
+        _runMenuOwner = owner;
+        gameObject.SetActive(true);
+        InitializeMenu();
+        _clicked = false;
+        CloseSettings();
+        RefreshHomeVolume();
+        _videoPlayer?.Play();
+    }
+
+    public void HideRunMenu()
+    {
+        CloseSettings();
+        _videoPlayer?.Pause();
+        gameObject.SetActive(false);
+    }
+
+    public bool CloseSettings()
+    {
+        if (_homeVolumePanel == null || !_homeVolumePanel.activeSelf) return false;
+        _homeVolumePanel.SetActive(false);
+        return true;
+    }
+
+    public void OnResumeButton()
+    {
+        if (_runMenuOwner == null) return;
+        AudioManager.Instance?.PlayClick();
+        _runMenuOwner.Resume();
     }
 
     private void SetupVideo()
     {
         // 不用 Camera Far Plane，改成 UI RawImage，最稳
-        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        Canvas canvas = FindMenuComponent<Canvas>();
         if (canvas == null)
         {
             GameObject canvasGo = new GameObject("HomeCanvas",
                 typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            if (menuRoot != null) canvasGo.transform.SetParent(menuRoot, false);
+            else SceneManager.MoveGameObjectToScene(canvasGo, gameObject.scene);
             canvas = canvasGo.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
         }
 
         // 复用已有 RawImage，避免重复建
-        GameObject rawGo = GameObject.Find("HomeVideoRawImage");
+        GameObject rawGo = FindInactive("HomeVideoRawImage");
         if (rawGo == null)
         {
             rawGo = new GameObject("HomeVideoRawImage", typeof(RectTransform), typeof(RawImage));
@@ -46,13 +102,25 @@ public class HomeManager : MonoBehaviour
         rt.offsetMin = Vector2.zero;
         rt.offsetMax = Vector2.zero;
 
-        RenderTexture renderTex = new RenderTexture(1920, 1080, 0);
-        RawImage raw = rawGo.GetComponent<RawImage>();
-        raw.texture = renderTex;
-        raw.color = Color.white;
+        _videoTexture = new RenderTexture(1920, 1080, 0);
+        _videoTexture.Create();
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture.active = _videoTexture;
+        GL.Clear(true, true, Color.black);
+        RenderTexture.active = previous;
 
-        GameObject videoGo = GameObject.Find("VideoBackground");
-        if (videoGo == null) videoGo = new GameObject("VideoBackground");
+        RawImage raw = rawGo.GetComponent<RawImage>();
+        raw.texture = _videoTexture;
+        raw.color = Color.white;
+        raw.raycastTarget = true;
+
+        GameObject videoGo = FindInactive("VideoBackground");
+        if (videoGo == null)
+        {
+            videoGo = new GameObject("VideoBackground");
+            if (menuRoot != null) videoGo.transform.SetParent(menuRoot, false);
+            else SceneManager.MoveGameObjectToScene(videoGo, gameObject.scene);
+        }
 
         VideoPlayer vp = videoGo.GetComponent<VideoPlayer>();
         if (vp == null) vp = videoGo.AddComponent<VideoPlayer>();
@@ -78,15 +146,17 @@ public class HomeManager : MonoBehaviour
 
         vp.playOnAwake = true;
         vp.isLooping = true;
+        vp.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
         vp.renderMode = VideoRenderMode.RenderTexture;
-        vp.targetTexture = renderTex;
+        vp.targetTexture = _videoTexture;
         vp.audioOutputMode = VideoAudioOutputMode.None;
+        _videoPlayer = vp;
         vp.Play();
     }
 
     private void SetupStartButton()
     {
-        Button btn = GameObject.Find("StartButton")?.GetComponent<Button>();
+        Button btn = FindInactive("StartButton")?.GetComponent<Button>();
         if (btn == null) return;
 
         btn.onClick.RemoveListener(OnStartButton);
@@ -105,7 +175,7 @@ public class HomeManager : MonoBehaviour
         btnRt.anchorMax = new Vector2(0.5f, 0.5f);
         btnRt.pivot = new Vector2(0.5f, 0.5f);
         btnRt.sizeDelta = new Vector2(320f, 150f);
-        btnRt.anchoredPosition = Vector2.zero;
+        btnRt.anchoredPosition = IsRunMenu ? new Vector2(0f, -175f) : Vector2.zero;
         btnRt.localScale = Vector3.one;
 
         // 直接删掉按钮上自带的 "Button" 文字子物体，不是只清空
@@ -117,6 +187,31 @@ public class HomeManager : MonoBehaviour
                 Destroy(child.gameObject);
             }
         }
+    }
+
+    private void SetupRunResumeButton()
+    {
+        Canvas canvas = FindMenuComponent<Canvas>();
+        if (canvas == null) return;
+
+        GameObject resumeGo = FindInactive("RunResumeButton");
+        if (resumeGo == null)
+        {
+            resumeGo = new GameObject("RunResumeButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            resumeGo.transform.SetParent(canvas.transform, false);
+        }
+
+        RectTransform rt = (RectTransform)resumeGo.transform;
+        rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero;
+        rt.sizeDelta = new Vector2(320f, 150f);
+        rt.localScale = Vector3.one;
+
+        ApplyHomeSprite(resumeGo.GetComponent<Image>(), "resume");
+        Button resume = resumeGo.GetComponent<Button>();
+        resume.onClick.RemoveListener(OnResumeButton);
+        resume.onClick.AddListener(OnResumeButton);
     }
 
     private Sprite LoadSprite(string name)
@@ -138,18 +233,34 @@ public class HomeManager : MonoBehaviour
 
     private GameObject FindInactive(string name)
     {
-        Transform[] all = Object.FindObjectsByType<Transform>(
-            FindObjectsInactive.Include, FindObjectsSortMode.None);
-        foreach (Transform t in all)
+        if (menuRoot != null)
         {
-            if (t.name == name) return t.gameObject;
+            foreach (Transform t in menuRoot.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t.gameObject;
+            return null;
+        }
+
+        foreach (GameObject root in gameObject.scene.GetRootGameObjects())
+            foreach (Transform t in root.GetComponentsInChildren<Transform>(true))
+                if (t.name == name) return t.gameObject;
+        return null;
+    }
+
+    private T FindMenuComponent<T>() where T : Component
+    {
+        if (menuRoot != null) return menuRoot.GetComponentInChildren<T>(true);
+
+        foreach (GameObject root in gameObject.scene.GetRootGameObjects())
+        {
+            T component = root.GetComponentInChildren<T>(true);
+            if (component != null) return component;
         }
         return null;
     }
 
     private void SetupHomeSettingsUI()
     {
-        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        Canvas canvas = FindMenuComponent<Canvas>();
         if (canvas == null) return;
 
         // 设置图标按钮：已存在就复用，不再新建
@@ -168,11 +279,8 @@ public class HomeManager : MonoBehaviour
         ApplyHomeSprite(settingsGo.GetComponent<Image>(), "settings");
 
         Button settingsBtn = settingsGo.GetComponent<Button>();
-        settingsBtn.onClick.AddListener(() =>
-        {
-            AudioManager.Instance?.PlayClick();
-            _homeVolumePanel.SetActive(!_homeVolumePanel.activeSelf);
-        });
+        settingsBtn.onClick.RemoveListener(ToggleSettings);
+        settingsBtn.onClick.AddListener(ToggleSettings);
 
         // 音量面板：已存在就复用
         GameObject panel = FindInactive("HomeVolumePanel");
@@ -204,6 +312,14 @@ public class HomeManager : MonoBehaviour
         }
 
         RefreshHomeVolume();
+    }
+
+    private void ToggleSettings()
+    {
+        if (_homeVolumePanel == null) return;
+        AudioManager.Instance?.PlayClick();
+        _homeVolumePanel.SetActive(!_homeVolumePanel.activeSelf);
+        if (_homeVolumePanel.activeSelf) RefreshHomeVolume();
     }
 
     private void CreateHomeVolumeRow(Transform parent, string iconName, float y, out Text valueText, bool isBgm)
@@ -339,7 +455,19 @@ public class HomeManager : MonoBehaviour
         _clicked = true;
 
         AudioManager.Instance?.PlayClick();
-        Time.timeScale = 1f;
-        SceneManager.LoadScene(startSceneName);
+        GameManager.StartNewRun(startSceneName);
+    }
+
+    void OnDestroy()
+    {
+        if (_videoTexture == null) return;
+        if (_videoPlayer != null && _videoPlayer.targetTexture == _videoTexture)
+        {
+            _videoPlayer.Stop();
+            _videoPlayer.targetTexture = null;
+        }
+        _videoTexture.Release();
+        Destroy(_videoTexture);
+        _videoTexture = null;
     }
 }
