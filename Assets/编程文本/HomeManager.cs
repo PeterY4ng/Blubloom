@@ -163,7 +163,7 @@ public class HomeManager : MonoBehaviour
         btn.onClick.AddListener(OnStartButton);
 
         Image img = btn.GetComponent<Image>();
-        Sprite sprite = LoadSprite("start");
+        Sprite sprite = LoadSprite(IsRunMenu ? "start_new_game" : "start");
         if (img != null && sprite != null)
         {
             img.sprite = sprite;
