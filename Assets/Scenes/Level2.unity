@@ -2000,7 +2000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 644edee7a4c95ed4ea4e22eaa3820ed3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  evolveScores: 64000000c80000002c010000
+  evolveScores: 6e0000006e0000002c010000
   startHealth: 3
 --- !u!4 &895331387
 Transform:
@@ -2175,7 +2175,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.75
 --- !u!212 &931211486
 SpriteRenderer:
   serializedVersion: 2
@@ -2318,7 +2318,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.75
 --- !u!212 &931969870
 SpriteRenderer:
   serializedVersion: 2
@@ -2432,7 +2432,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.75
 --- !u!212 &1007147408
 SpriteRenderer:
   serializedVersion: 2
@@ -2908,8 +2908,8 @@ MonoBehaviour:
   scorePerFood: 10
   invincibilityTime: 1.5
   knockbackForce: 8
-  cutsceneName: Story1
-  nextSceneName: Level2
+  cutsceneName: Evolution2To3
+  nextSceneName: Level3
   evolveAnimName: Cell_Evolve
   evolveAnimLength: 1.5
 --- !u!1 &1308205387
@@ -3032,7 +3032,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.75
 --- !u!212 &1317787136
 SpriteRenderer:
   serializedVersion: 2
@@ -4025,7 +4025,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.75
 --- !u!212 &1772913494
 SpriteRenderer:
   serializedVersion: 2
@@ -4398,7 +4398,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.5
+  m_Radius: 0.75
 --- !u!212 &1862256662
 SpriteRenderer:
   serializedVersion: 2
