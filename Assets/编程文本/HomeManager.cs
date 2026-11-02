@@ -167,6 +167,7 @@ public class HomeManager : MonoBehaviour
         if (img != null && sprite != null)
         {
             img.sprite = sprite;
+            if (IsRunMenu) img.preserveAspect = true;
         }
 
         // 强制居中锚点 + 固定大小，防止它跟着原图或旧 RectTransform 变大
@@ -208,7 +209,9 @@ public class HomeManager : MonoBehaviour
         rt.sizeDelta = new Vector2(320f, 150f);
         rt.localScale = Vector3.one;
 
-        ApplyHomeSprite(resumeGo.GetComponent<Image>(), "resume");
+        Image resumeImage = resumeGo.GetComponent<Image>();
+        ApplyHomeSprite(resumeImage, "resume");
+        resumeImage.preserveAspect = true;
         Button resume = resumeGo.GetComponent<Button>();
         resume.onClick.RemoveListener(OnResumeButton);
         resume.onClick.AddListener(OnResumeButton);

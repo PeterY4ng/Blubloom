@@ -1297,7 +1297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 672055a5102a47f4e9facdf0ed0970ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HomeManager
-  startSceneName: Level1
+  startSceneName: "\u5F00\u5C40\u6559\u5B66"
   menuRoot: {fileID: 4954845251631445858}
 --- !u!1 &7150229279219012749
 GameObject:
