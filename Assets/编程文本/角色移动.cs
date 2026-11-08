@@ -3,8 +3,11 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("移动速度")]
+    [Header("基准移动速度（参考相机大小下的速度）")]
     public float moveSpeed = 5f;
+
+    [Header("参考相机 Orthographic Size（Level1/2 = 3.6）")]
+    public float referenceCameraSize = 3.6f;
 
     [Header("背景 SpriteRenderer：把背景图拖进来，自动按背景算边界")]
     public SpriteRenderer background;
@@ -15,11 +18,25 @@ public class PlayerMovement : MonoBehaviour
     private Rigidbody2D rb;
     private Collider2D col;
     private Vector2 moveInput;
+    private float actualSpeed;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
         col = GetComponent<Collider2D>();
+
+        // 自动根据当前相机大小换算速度，保证不同关卡视觉移动速度一致
+        Camera cam = Camera.main;
+        if (cam != null && cam.orthographic)
+        {
+            actualSpeed = moveSpeed * (cam.orthographicSize / referenceCameraSize);
+            Debug.Log($"[PlayerMovement] 相机大小={cam.orthographicSize}, 基准速度={moveSpeed}, 实际速度={actualSpeed:F2}");
+        }
+        else
+        {
+            actualSpeed = moveSpeed;
+            Debug.LogWarning("[PlayerMovement] 找不到正交相机，使用原始速度");
+        }
     }
 
     void Update()
@@ -41,7 +58,7 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        rb.linearVelocity = moveInput * moveSpeed;
+        rb.linearVelocity = moveInput * actualSpeed;
         ClampToBackground();
     }
 
