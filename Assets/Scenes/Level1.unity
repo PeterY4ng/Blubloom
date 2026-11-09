@@ -2475,7 +2475,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8c3011ee6425ea4eaf3e5888c7c21d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStats
-  scorePerFood: 20
+  scorePerFood: 10
   invincibilityTime: 1.5
   knockbackForce: 8
   cutsceneName: 进化动画
@@ -3161,7 +3161,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 644edee7a4c95ed4ea4e22eaa3820ed3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  evolveScores: 320000006e0000002c010000
+  evolveScores: 1e00000050000000a0000000
   startHealth: 3
 --- !u!4 &1596097916
 Transform:

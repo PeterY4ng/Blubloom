@@ -24,6 +24,7 @@ public class PlayerStats : MonoBehaviour
     public float evolveAnimLength = 1.5f;
 
     private bool _isInvincible;
+    private bool _isDead;
     private bool _hasEvolved;
     private Rigidbody2D _rb;
     private Animator _anim;
@@ -48,6 +49,8 @@ public class PlayerStats : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
+        if (_isDead || _hasEvolved) return;
+
         if (other.CompareTag("Food"))
         {
             if (GameManager.Instance != null)
@@ -118,9 +121,13 @@ public class PlayerStats : MonoBehaviour
         AudioManager.Instance?.PlayImpact();
         _isInvincible = true;
         RefreshUI();
-        Invoke(nameof(EndInvincible), invincibilityTime);
         if (GameManager.Instance.CurrentHealth <= 0)
+        {
+            _isDead = true;
             GameManager.Instance.RestartRun();
+            return;
+        }
+        Invoke(nameof(EndInvincible), invincibilityTime);
     }
 
     void EndInvincible() => _isInvincible = false;
