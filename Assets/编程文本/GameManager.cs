@@ -6,7 +6,7 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance;
 
     [Header("每关进化所需分数（按关卡顺序：第1关、第2关、第3关...）")]
-    public int[] evolveScores = new int[] { 100, 200, 300 };
+    public int[] evolveScores = new int[] { 30, 80, 160 };
 
     [Header("开局生命")]
     public int startHealth = 3;
@@ -14,6 +14,9 @@ public class GameManager : MonoBehaviour
     public int CurrentScore { get; private set; }
     public int CurrentHealth { get; private set; }
     public int StageIndex { get; private set; }
+
+    private int _entryScore;
+    private int _entryStageIndex;
 
     void Awake()
     {
@@ -26,6 +29,7 @@ public class GameManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
         CurrentHealth = startHealth;
+        SceneManager.sceneLoaded += RecordSceneEntry;
 
         // 自动生成全局音频和暂停菜单
         AudioManager.Ensure();
@@ -34,6 +38,15 @@ public class GameManager : MonoBehaviour
             GameObject pauseGo = new GameObject("PauseManager");
             pauseGo.AddComponent<PauseManager>();
         }
+    }
+
+    void OnDestroy() => SceneManager.sceneLoaded -= RecordSceneEntry;
+
+    private void RecordSceneEntry(Scene scene, LoadSceneMode mode)
+    {
+        if (mode != LoadSceneMode.Single) return;
+        _entryScore = CurrentScore;
+        _entryStageIndex = StageIndex;
     }
 
     public void AddScore(int amount)
@@ -73,12 +86,12 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(firstSceneName);
     }
 
-    // 死亡重开：清掉所有进度
+    // 死亡重开：恢复本关入口的分数和阶段，补满生命。
     public void RestartRun()
     {
-        CurrentScore = 0;
+        CurrentScore = _entryScore;
         CurrentHealth = startHealth;
-        StageIndex = 0;
+        StageIndex = _entryStageIndex;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 }

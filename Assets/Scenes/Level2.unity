@@ -2000,7 +2000,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 644edee7a4c95ed4ea4e22eaa3820ed3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
-  evolveScores: 6e0000006e0000002c010000
+  evolveScores: 5000000050000000a0000000
   startHealth: 3
 --- !u!4 &895331387
 Transform:
