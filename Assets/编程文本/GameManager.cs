@@ -14,6 +14,7 @@ public class GameManager : MonoBehaviour
     public int CurrentScore { get; private set; }
     public int CurrentHealth { get; private set; }
     public int StageIndex { get; private set; }
+    public int EntryScore => _entryScore;
 
     private int _entryScore;
     private int _entryStageIndex;
@@ -28,7 +29,7 @@ public class GameManager : MonoBehaviour
         }
         Instance = this;
         DontDestroyOnLoad(gameObject);
-        CurrentHealth = startHealth;
+        RestoreHealth();
         SceneManager.sceneLoaded += RecordSceneEntry;
 
         // 自动生成全局音频和暂停菜单
@@ -45,6 +46,8 @@ public class GameManager : MonoBehaviour
     private void RecordSceneEntry(Scene scene, LoadSceneMode mode)
     {
         if (mode != LoadSceneMode.Single) return;
+        if (scene.name.StartsWith("Level") && int.TryParse(scene.name.Substring(5), out _))
+            RestoreHealth();
         _entryScore = CurrentScore;
         _entryStageIndex = StageIndex;
     }
@@ -57,6 +60,11 @@ public class GameManager : MonoBehaviour
     public void Damage()
     {
         CurrentHealth--;
+    }
+
+    public void RestoreHealth()
+    {
+        CurrentHealth = startHealth;
     }
 
     // 当前关卡该攒多少分进化
@@ -90,7 +98,7 @@ public class GameManager : MonoBehaviour
     public void RestartRun()
     {
         CurrentScore = _entryScore;
-        CurrentHealth = startHealth;
+        RestoreHealth();
         StageIndex = _entryStageIndex;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }

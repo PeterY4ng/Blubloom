@@ -19,6 +19,7 @@ public class PlayerMovement : MonoBehaviour
     private Collider2D col;
     private Vector2 moveInput;
     private float actualSpeed;
+    private float _knockbackRemaining;
 
     void Start()
     {
@@ -58,8 +59,18 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        rb.linearVelocity = moveInput * actualSpeed;
+        if (_knockbackRemaining > 0f)
+            _knockbackRemaining -= Time.fixedDeltaTime;
+        else
+            rb.linearVelocity = moveInput * actualSpeed;
         ClampToBackground();
+    }
+
+    public void ApplyKnockback(Vector2 impulse)
+    {
+        rb.linearVelocity = Vector2.zero;
+        rb.AddForce(impulse, ForceMode2D.Impulse);
+        _knockbackRemaining = 0.12f;
     }
 
     private void ClampToBackground()

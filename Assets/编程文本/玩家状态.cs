@@ -30,6 +30,9 @@ public class PlayerStats : MonoBehaviour
     private Animator _anim;
     private PlayerMovement _movement;
 
+    public bool IsDead => _isDead;
+    public string DeathSceneName { get; set; }
+
     void Start()
     {
         _rb = GetComponent<Rigidbody2D>();
@@ -70,18 +73,17 @@ public class PlayerStats : MonoBehaviour
 
     void OnCollisionEnter2D(Collision2D other)
     {
-        if (other.collider.CompareTag("Obstacle") && !_isInvincible)
+        if (other.collider.CompareTag("Obstacle") && TakeDamage() && !_isDead)
         {
-            TakeDamage();
-            _rb.linearVelocity = Vector2.zero;
             Vector2 dir = other.contacts[0].normal;
-            _rb.AddForce(dir * knockbackForce, ForceMode2D.Impulse);
+            _movement.ApplyKnockback(dir * knockbackForce);
         }
     }
 
     void CheckEvolve()
     {
         if (_hasEvolved || GameManager.Instance == null) return;
+        if (string.IsNullOrEmpty(cutsceneName) && string.IsNullOrEmpty(nextSceneName)) return;
         if (GameManager.Instance.CurrentScore >= GameManager.Instance.GetEvolveScore())
             StartCoroutine(EvolveRoutine());
     }
@@ -93,7 +95,7 @@ public class PlayerStats : MonoBehaviour
         _rb.linearVelocity = Vector2.zero;
         _isInvincible = true;
 
-        if (_anim != null) _anim.Play(evolveAnimName);
+        if (_anim != null && !string.IsNullOrEmpty(evolveAnimName)) _anim.Play(evolveAnimName);
         yield return new WaitForSeconds(evolveAnimLength);
 
         if (GameManager.Instance != null)
@@ -114,20 +116,33 @@ public class PlayerStats : MonoBehaviour
         }
     }
 
-    void TakeDamage()
+    public bool TakeDamage()
     {
-        if (GameManager.Instance == null) return;
+        if (_isDead || _isInvincible || GameManager.Instance == null) return false;
         GameManager.Instance.Damage();
         AudioManager.Instance?.PlayImpact();
         _isInvincible = true;
         RefreshUI();
+        UIManager.Instance?.ShowDamageFlash();
         if (GameManager.Instance.CurrentHealth <= 0)
         {
             _isDead = true;
-            GameManager.Instance.RestartRun();
-            return;
+            _movement.enabled = false;
+            _rb.linearVelocity = Vector2.zero;
+            StartCoroutine(DeathAfterFlash());
+            return true;
         }
         Invoke(nameof(EndInvincible), invincibilityTime);
+        return true;
+    }
+
+    private IEnumerator DeathAfterFlash()
+    {
+        yield return new WaitForSecondsRealtime(UIManager.DamageFlashDuration);
+        if (string.IsNullOrEmpty(DeathSceneName))
+            GameManager.Instance.RestartRun();
+        else
+            SceneManager.LoadScene(DeathSceneName);
     }
 
     void EndInvincible() => _isInvincible = false;
