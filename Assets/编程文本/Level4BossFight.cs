@@ -1,12 +1,11 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 
 public sealed class Level4BossFight : MonoBehaviour
 {
     [SerializeField] private Camera arenaCamera;
+    [SerializeField] private SpriteRenderer arenaBackground;
     [SerializeField] private SpriteRenderer player;
     [SerializeField] private SpriteRenderer boss;
     [SerializeField] private Sprite[] playerAttackFrames;
@@ -14,115 +13,122 @@ public sealed class Level4BossFight : MonoBehaviour
     [SerializeField] private Sprite[] bossAttackFrames;
     [SerializeField] private Sprite playerShot;
     [SerializeField] private Sprite[] bossShots;
-    [SerializeField] private TMP_Text playerHealthText;
     [SerializeField] private TMP_Text bossHealthText;
+    [SerializeField] private GameObject bossHealthPanel;
 
-    private const int PlayerMaxHealth = 3;
-    private const int BossMaxHealth = 10;
-    private const float PlayerMoveSpeed = 5f;
+    private const int BossMaxHealth = 6;
     private const float BossSwimSpeed = 2.1f;
-    private const float PlayerShotInterval = 2.15f;
+    private const float PlayerShotInterval = 1.5f;
     private const float BossShotInterval = 1.4f;
-    private const float BarrageInterval = 1.05f;
+    private const float BarrageInterval = 0.6f;
     private const float PlayerShotSpeed = 11f;
     private const float BossShotSpeed = 7.5f;
     private const float BarrageSpeed = 12f;
     private const float AnimationFps = 8f;
     private const float ReleaseTime = 4f / AnimationFps; // The fifth attack frame.
-    private const float BarrageRowSpacing = 0.55f;
+    private const int BarrageShotCount = 121;
+    private const float BarrageFanAngle = 200f;
+    private const float BarrageShotSize = 0.6f;
     private const string EndingScene = "Level4Ending";
+    private const string PlayerSwimState = "Player_Swim";
+    private const string PlayerAttackState = "Player_Attack";
 
-    private enum Phase { Duel, Barrage, Finished }
+    private enum Phase { Approach, Duel, Barrage, Finished }
 
     private sealed class Shot
     {
         public SpriteRenderer Renderer;
         public bool FromPlayer;
-    }
-
-    private sealed class Wave
-    {
-        public Transform Transform;
-        public bool HitPlayer;
+        public Vector2 Velocity;
+        public float Radius;
     }
 
     private readonly List<Shot> _shots = new();
-    private readonly List<Wave> _waves = new();
     private Phase _phase;
-    private int _playerHealth = PlayerMaxHealth;
+    private PlayerStats _playerStats;
+    private Animator _playerAnimator;
     private int _bossHealth = BossMaxHealth;
     private int _bossShotIndex;
+    private int _barrageBurstIndex;
     private float _time;
-    private float _playerAttackStart = 0.65f;
-    private float _bossAttackStart = 0.25f;
+    private float _playerAttackStart;
+    private float _bossAttackStart;
+    private float _nextBarrageAt;
     private bool _playerReleased;
     private bool _bossReleased;
 
     private void Start()
     {
-        Rect arena = ArenaBounds();
-        player.transform.position = new Vector3(arena.xMin + 1.1f, arena.center.y, 0f);
-        MoveBoss(arena);
+        _playerStats = player.GetComponent<PlayerStats>();
+        _playerAnimator = player.GetComponent<Animator>();
+        bossHealthPanel.SetActive(false);
+        MoveBoss(ArenaBounds());
         RefreshHealth();
     }
 
     private void Update()
     {
         float step = Time.deltaTime;
-        if (step <= 0f || _phase == Phase.Finished) return;
+        if (step <= 0f || _phase == Phase.Finished || _playerStats.IsDead) return;
 
         _time += step;
         Rect arena = ArenaBounds();
-        MovePlayer(arena, step);
         MoveBoss(arena);
+        RefreshHealth();
+
+        if (_phase == Phase.Approach)
+        {
+            boss.sprite = bossIdleFrames[Mathf.FloorToInt(_time * AnimationFps) % bossIdleFrames.Length];
+            if (!ActorsShareView()) return;
+
+            _phase = Phase.Duel;
+            _playerAttackStart = _time;
+            _bossAttackStart = _time;
+            _playerAnimator.Play(PlayerAttackState, 0, 0f);
+            bossHealthPanel.SetActive(true);
+        }
 
         if (_phase == Phase.Barrage)
         {
-            if (AdvanceAttack(boss, bossAttackFrames, bossIdleFrames[0], BarrageInterval,
-                    ref _bossAttackStart, ref _bossReleased))
-                SpawnWave(arena);
-            MoveWaves(arena, step);
+            AdvanceAttack(boss, bossAttackFrames, bossIdleFrames[0], bossAttackFrames.Length / AnimationFps,
+                ref _bossAttackStart, ref _bossReleased);
+            if (_time >= _nextBarrageAt)
+            {
+                SpawnBarrage();
+                _nextBarrageAt = _time + BarrageInterval;
+            }
+            MoveShots(arena, step);
             return;
         }
 
         if (AdvanceAttack(player, playerAttackFrames, playerAttackFrames[0], PlayerShotInterval,
                 ref _playerAttackStart, ref _playerReleased))
-            SpawnShot(playerShot, (Vector2)player.transform.position + new Vector2(0.96f, -0.20f), true);
+            SpawnShot(playerShot, (Vector2)player.transform.position + new Vector2(0.96f, -0.20f),
+                true, Vector2.right * PlayerShotSpeed, 0.46f);
 
         int idleFrame = Mathf.FloorToInt(_time * AnimationFps) % bossIdleFrames.Length;
         if (AdvanceAttack(boss, bossAttackFrames, bossIdleFrames[idleFrame], BossShotInterval,
                 ref _bossAttackStart, ref _bossReleased))
-            SpawnShot(NextBossShot(), (Vector2)boss.transform.position + new Vector2(-1.42f, -0.42f), false);
+            SpawnShot(NextBossShot(), (Vector2)boss.transform.position + new Vector2(-1.42f, -0.42f),
+                false, Vector2.left * BossShotSpeed, 0.58f);
 
         MoveShots(arena, step);
     }
 
     private Rect ArenaBounds()
     {
-        Vector2 center = arenaCamera.transform.position;
-        float halfHeight = arenaCamera.orthographicSize;
-        float halfWidth = halfHeight * arenaCamera.aspect;
-        return Rect.MinMaxRect(center.x - halfWidth, center.y - halfHeight,
-            center.x + halfWidth, center.y + halfHeight);
+        Bounds bounds = arenaBackground.bounds;
+        return Rect.MinMaxRect(bounds.min.x, bounds.min.y, bounds.max.x, bounds.max.y);
     }
 
-    private void MovePlayer(Rect arena, float step)
+    private bool ActorsShareView()
     {
-        Vector2 input = Vector2.zero;
-        Keyboard keyboard = Keyboard.current;
-        if (keyboard != null)
-        {
-            if (keyboard.aKey.isPressed) input.x--;
-            if (keyboard.dKey.isPressed) input.x++;
-            if (keyboard.sKey.isPressed) input.y--;
-            if (keyboard.wKey.isPressed) input.y++;
-        }
-
-        Vector2 position = (Vector2)player.transform.position + input.normalized * (PlayerMoveSpeed * step);
-        float edge = Mathf.Min(1.1f, arena.width / 2f);
-        position.x = Mathf.Clamp(position.x, arena.xMin + edge, arena.xMax - edge);
-        position.y = Mathf.Clamp(position.y, arena.yMin + 0.85f, arena.yMax - 1.25f);
-        player.transform.position = position;
+        Vector3 playerView = arenaCamera.WorldToViewportPoint(player.transform.position);
+        Vector3 bossView = arenaCamera.WorldToViewportPoint(boss.transform.position);
+        return playerView.z > 0f && playerView.x >= 0f && playerView.x <= 1f
+            && playerView.y >= 0f && playerView.y <= 1f
+            && bossView.z > 0f && bossView.x >= 0f && bossView.x <= 1f
+            && bossView.y >= 0f && bossView.y <= 1f;
     }
 
     private void MoveBoss(Rect arena)
@@ -130,7 +136,7 @@ public sealed class Level4BossFight : MonoBehaviour
         float bottom = arena.yMin + 1.15f;
         float travel = arena.height - 2.6f;
         float y = bottom + Mathf.PingPong(travel / 2f + _time * BossSwimSpeed, travel);
-        boss.transform.position = new Vector3(arena.xMax - 1.25f, y, 0f);
+        boss.transform.position = new Vector3(arena.xMax - 1.5f, y, 0f);
     }
 
     private bool AdvanceAttack(SpriteRenderer actor, Sprite[] frames, Sprite idle, float interval,
@@ -142,10 +148,12 @@ public sealed class Level4BossFight : MonoBehaviour
             startedAt = _time;
             elapsed = 0f;
             released = false;
+            if (actor == player) _playerAnimator.Play(PlayerAttackState, 0, 0f);
         }
 
         int frame = Mathf.FloorToInt(elapsed * AnimationFps);
-        actor.sprite = frame >= 0 && frame < frames.Length ? frames[frame] : idle;
+        if (actor != player)
+            actor.sprite = frame >= 0 && frame < frames.Length ? frames[frame] : idle;
         if (elapsed < ReleaseTime || released) return false;
         released = true;
         return true;
@@ -173,10 +181,16 @@ public sealed class Level4BossFight : MonoBehaviour
         return renderer;
     }
 
-    private void SpawnShot(Sprite sprite, Vector2 muzzle, bool fromPlayer)
+    private void SpawnShot(Sprite sprite, Vector2 muzzle, bool fromPlayer, Vector2 velocity, float size)
     {
-        SpriteRenderer renderer = CreateProjectile(sprite, muzzle, fromPlayer ? 0.46f : 0.58f, transform);
-        _shots.Add(new Shot { Renderer = renderer, FromPlayer = fromPlayer });
+        SpriteRenderer renderer = CreateProjectile(sprite, muzzle, size, transform);
+        _shots.Add(new Shot
+        {
+            Renderer = renderer,
+            FromPlayer = fromPlayer,
+            Velocity = velocity,
+            Radius = size / 2f
+        });
     }
 
     private void MoveShots(Rect arena, float step)
@@ -185,37 +199,45 @@ public sealed class Level4BossFight : MonoBehaviour
         {
             Shot shot = _shots[i];
             Vector2 position = shot.Renderer.transform.position;
-            float nextX = position.x + (shot.FromPlayer ? PlayerShotSpeed : -BossShotSpeed) * step;
-            if (HitsTarget(shot.FromPlayer, position, nextX))
+            Vector2 next = position + shot.Velocity * step;
+            if (HitsTarget(shot, position, next))
             {
                 Destroy(shot.Renderer.gameObject);
                 _shots.RemoveAt(i);
+                Phase phaseBeforeHit = _phase;
                 if (shot.FromPlayer) HitBoss();
                 else HitPlayer();
-                if (_phase != Phase.Duel) return;
+                if (_phase != phaseBeforeHit) return;
             }
-            else if (nextX < arena.xMin - 1f || nextX > arena.xMax + 1f)
+            else if (next.x < arena.xMin - 1f || next.x > arena.xMax + 1f ||
+                next.y < arena.yMin - 1f || next.y > arena.yMax + 1f)
             {
                 Destroy(shot.Renderer.gameObject);
                 _shots.RemoveAt(i);
             }
             else
             {
-                shot.Renderer.transform.position = new Vector2(nextX, position.y);
+                shot.Renderer.transform.position = next;
             }
         }
     }
 
-    private bool HitsTarget(bool fromPlayer, Vector2 position, float nextX)
+    private bool HitsTarget(Shot shot, Vector2 position, Vector2 next)
     {
-        // Sweep the horizontal segment so a fast projectile cannot skip past the body.
-        Vector2 center = fromPlayer
+        Vector2 center = shot.FromPlayer
             ? (Vector2)boss.transform.position + new Vector2(-0.53f, -0.03f)
             : (Vector2)player.transform.position + new Vector2(0.18f, -0.12f);
-        Vector2 half = fromPlayer ? new Vector2(1.19f, 0.86f) : new Vector2(0.94f, 0.69f);
-        return Mathf.Abs(position.y - center.y) <= half.y
-            && Mathf.Max(position.x, nextX) >= center.x - half.x
-            && Mathf.Min(position.x, nextX) <= center.x + half.x;
+        Vector2 half = shot.FromPlayer ? new Vector2(1.19f, 0.86f) : new Vector2(0.94f, 0.69f);
+        Bounds target = new Bounds(center, new Vector3(half.x * 2f, half.y * 2f, 1f));
+        target.Expand(shot.Radius * 2f);
+        if (target.Contains(position)) return true;
+
+        // Sweep the entire movement segment, including diagonal barrage projectiles.
+        Vector3 travel = next - position;
+        float distance = travel.magnitude;
+        if (distance <= Mathf.Epsilon) return false;
+        return target.IntersectRay(new Ray(position, travel / distance), out float hitDistance)
+            && hitDistance <= distance;
     }
 
     private void HitBoss()
@@ -226,66 +248,44 @@ public sealed class Level4BossFight : MonoBehaviour
         if (_bossHealth > 0) return;
 
         _phase = Phase.Barrage;
+        _playerStats.DeathSceneName = EndingScene;
         _bossAttackStart = _time;
+        _nextBarrageAt = _time + ReleaseTime;
         _bossReleased = false;
-        player.sprite = playerAttackFrames[0];
+        _playerAnimator.Play(PlayerSwimState, 0, 0f);
         foreach (Shot shot in _shots) Destroy(shot.Renderer.gameObject);
         _shots.Clear();
     }
 
-    private void SpawnWave(Rect arena)
+    private void SpawnBarrage()
     {
-        var wall = new GameObject("Boss Barrage").transform;
-        wall.SetParent(transform, false);
-        float x = arena.xMax + 0.6f;
-        wall.position = new Vector2(x, arena.center.y);
-        for (float y = arena.yMin; y <= arena.yMax + BarrageRowSpacing / 2f; y += BarrageRowSpacing)
-            CreateProjectile(NextBossShot(), new Vector2(x, y), 0.7f, wall);
-        _waves.Add(new Wave { Transform = wall });
-    }
-
-    private void MoveWaves(Rect arena, float step)
-    {
-        for (int i = _waves.Count - 1; i >= 0; i--)
+        Vector2 origin = boss.transform.position;
+        Vector2 aim = (Vector2)player.transform.position - origin;
+        float centerAngle = Mathf.Atan2(aim.y, aim.x) * Mathf.Rad2Deg;
+        float angleStep = BarrageFanAngle / (BarrageShotCount - 1);
+        float offset = (_barrageBurstIndex % 2) * angleStep / 2f;
+        for (int i = 0; i < BarrageShotCount; i++)
         {
-            Wave wave = _waves[i];
-            Vector3 position = wave.Transform.position;
-            position.x -= BarrageSpeed * step;
-            wave.Transform.position = position;
-
-            // The wave spans the entire arena and overtakes the player at any height.
-            if (!wave.HitPlayer && position.x <= player.transform.position.x + 0.85f)
-            {
-                wave.HitPlayer = true;
-                HitPlayer();
-                if (_phase == Phase.Finished) return;
-            }
-            if (position.x >= arena.xMin - 1f) continue;
-            Destroy(wave.Transform.gameObject);
-            _waves.RemoveAt(i);
+            float angle = (centerAngle - BarrageFanAngle / 2f + i * angleStep + offset) * Mathf.Deg2Rad;
+            Vector2 velocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * BarrageSpeed;
+            SpawnShot(NextBossShot(), origin, false, velocity, BarrageShotSize);
         }
+        _barrageBurstIndex++;
     }
 
     private void HitPlayer()
     {
-        _playerHealth--;
-        AudioManager.Instance?.PlayImpact();
+        _playerStats.TakeDamage();
+        if (_playerStats.IsDead)
+        {
+            _phase = Phase.Finished;
+            return;
+        }
         RefreshHealth();
-        if (_playerHealth > 0) return;
-
-        Phase previousPhase = _phase;
-        _phase = Phase.Finished;
-        if (previousPhase == Phase.Barrage)
-            SceneManager.LoadScene(EndingScene);
-        else if (GameManager.Instance != null)
-            GameManager.Instance.RestartRun();
-        else
-            SceneManager.LoadScene(gameObject.scene.name);
     }
 
     private void RefreshHealth()
     {
-        playerHealthText.text = $"HP {_playerHealth}/{PlayerMaxHealth}";
-        bossHealthText.text = $"BOSS {_bossHealth}/{BossMaxHealth}";
+        bossHealthText.text = $"BOSS HP {_bossHealth}/{BossMaxHealth}";
     }
 }

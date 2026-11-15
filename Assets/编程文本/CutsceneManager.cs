@@ -54,7 +54,7 @@ public class CutsceneManager : MonoBehaviour
         brt.anchorMax = new Vector2(1f, 0f);
         brt.pivot = new Vector2(1f, 0f);
         brt.anchoredPosition = new Vector2(-50f, 50f);
-        brt.sizeDelta = new Vector2(220f, 110f);
+        brt.sizeDelta = new Vector2(320f, 160f);
 
         Image img = button.GetComponent<Image>();
         if (img == null) img = button.gameObject.AddComponent<Image>();
