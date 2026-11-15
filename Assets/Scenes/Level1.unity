@@ -621,11 +621,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CameraFollow
   target: {fileID: 1289763420}
   background: {fileID: 1850267160}
-  autoBounds: 1
-  minX: -4.46
-  maxX: 4.46
-  minY: -0.02
-  maxY: 0.02
   smoothSpeed: 10
 --- !u!1 &230634708
 GameObject:
@@ -1071,7 +1066,7 @@ RectTransform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1.5, y: 1.5, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 1216199943}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -2394,11 +2389,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   moveSpeed: 5
-  useBounds: 1
-  boundsMinX: -11.27
-  boundsMaxX: 11.27
-  boundsMinY: -4.12
-  boundsMaxY: 4.1
+  referenceCameraSize: 3.6
+  background: {fileID: 0}
+  padding: 0.1
 --- !u!70 &1289763422
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -2478,7 +2471,7 @@ MonoBehaviour:
   scorePerFood: 10
   invincibilityTime: 1.5
   knockbackForce: 8
-  cutsceneName: 进化动画
+  cutsceneName: "\u8FDB\u5316\u52A8\u753B"
   nextSceneName: Story1
   evolveAnimName: Cell_Evolve
   evolveAnimLength: 1.5
@@ -3686,7 +3679,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 408, y: -5}
+  m_AnchoredPosition: {x: 409.7, y: 4.1}
   m_SizeDelta: {x: 110, y: 110}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2100000102
@@ -3736,14 +3729,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 64
-  m_fontSizeBase: 64
+  m_fontSize: 100
+  m_fontSizeBase: 100
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_fontStyle: 7
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
@@ -3823,7 +3816,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 413, y: -4}
+  m_AnchoredPosition: {x: 402.3, y: 5.1}
   m_SizeDelta: {x: 110, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2100000202
@@ -3873,14 +3866,14 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 56
-  m_fontSizeBase: 56
+  m_fontSize: 100
+  m_fontSizeBase: 100
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
-  m_HorizontalAlignment: 1
+  m_fontStyle: 7
+  m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 0
