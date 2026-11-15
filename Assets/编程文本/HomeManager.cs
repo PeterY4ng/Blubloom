@@ -170,15 +170,7 @@ public class HomeManager : MonoBehaviour
             if (IsRunMenu) img.preserveAspect = true;
         }
 
-        // 强制居中锚点 + 固定大小，防止它跟着原图或旧 RectTransform 变大
-        RectTransform btnRt = (RectTransform)btn.transform;
-        btnRt.anchorMin = new Vector2(0.5f, 0.5f);
-        btnRt.anchorMax = new Vector2(0.5f, 0.5f);
-        btnRt.pivot = new Vector2(0.5f, 0.5f);
-        btnRt.sizeDelta = new Vector2(320f, 150f);
-        btnRt.anchoredPosition = IsRunMenu ? new Vector2(0f, -175f) : Vector2.zero;
-        btnRt.localScale = Vector3.one;
-
+       
         // 直接删掉按钮上自带的 "Button" 文字子物体，不是只清空
         for (int i = btn.transform.childCount - 1; i >= 0; i--)
         {
